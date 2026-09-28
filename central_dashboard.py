@@ -4,7 +4,8 @@ from pathlib import Path
 import streamlit as st
 
 
-DATA_DIR = Path("endpoint-data")
+LOCAL_DATA_DIR = Path("endpoint-data")
+API_DATA_DIR = Path("api-data")
 
 
 st.set_page_config(
@@ -23,30 +24,28 @@ st.write(
 
 
 # ============================================================
-# LOAD LOCAL ENDPOINT REPORTS
+# LOAD REPORTS FROM A DIRECTORY
 # ============================================================
 
-def load_local_reports():
+def load_reports_from_directory(directory, source_type):
     reports = []
 
-    if not DATA_DIR.exists():
+    if not directory.exists():
         return reports
 
-    for file_path in DATA_DIR.glob("*-assessment.json"):
-
+    for file_path in directory.glob("*-assessment.json"):
         try:
             with open(
                 file_path,
                 "r",
                 encoding="utf-8"
             ) as file:
-
                 report = json.load(file)
 
-                report["_source_file"] = file_path.name
-                report["_source_type"] = "Local"
+            report["_source_file"] = file_path.name
+            report["_source_type"] = source_type
 
-                reports.append(report)
+            reports.append(report)
 
         except Exception:
             continue
@@ -62,13 +61,10 @@ def load_uploaded_reports(uploaded_files):
     reports = []
 
     for uploaded_file in uploaded_files:
-
         try:
             uploaded_file.seek(0)
 
-            report = json.load(
-                uploaded_file
-            )
+            report = json.load(uploaded_file)
 
             report["_source_file"] = uploaded_file.name
             report["_source_type"] = "Uploaded"
@@ -87,9 +83,7 @@ def load_uploaded_reports(uploaded_files):
 # UPLOAD SECTION
 # ============================================================
 
-st.subheader(
-    "Import Endpoint Assessments"
-)
+st.subheader("Import Endpoint Assessments")
 
 st.write(
     "Upload one or more endpoint assessment JSON files "
@@ -103,7 +97,19 @@ uploaded_files = st.file_uploader(
 )
 
 
-local_reports = load_local_reports()
+# ============================================================
+# LOAD LOCAL, API AND UPLOADED REPORTS
+# ============================================================
+
+local_reports = load_reports_from_directory(
+    LOCAL_DATA_DIR,
+    "Local"
+)
+
+api_reports = load_reports_from_directory(
+    API_DATA_DIR,
+    "API"
+)
 
 uploaded_reports = []
 
@@ -119,18 +125,23 @@ if uploaded_files:
 
 all_reports = (
     local_reports
+    + api_reports
     + uploaded_reports
 )
 
 
 # ============================================================
 # REMOVE DUPLICATE ENDPOINTS
+#
+# Order matters:
+# Local -> API -> Uploaded
+#
+# Later sources replace earlier sources for the same hostname.
 # ============================================================
 
 reports_by_hostname = {}
 
 for report in all_reports:
-
     hostname = report.get(
         "endpoint",
         {}
@@ -139,9 +150,7 @@ for report in all_reports:
         "Unknown"
     )
 
-    reports_by_hostname[
-        hostname
-    ] = report
+    reports_by_hostname[hostname] = report
 
 
 reports = list(
@@ -154,14 +163,14 @@ reports = list(
 # ============================================================
 
 if not reports:
-
     st.warning(
         "No endpoint assessment data is available."
     )
 
     st.write(
-        "Run endpoint_agent.py on a Windows endpoint "
-        "or upload an assessment JSON file."
+        "Run endpoint_agent.py on a Windows endpoint, "
+        "submit data through the API, or upload an "
+        "assessment JSON file."
     )
 
 
@@ -170,10 +179,7 @@ if not reports:
 # ============================================================
 
 else:
-
-    total_devices = len(
-        reports
-    )
+    total_devices = len(reports)
 
     total_pass = sum(
         report.get(
@@ -213,13 +219,9 @@ else:
     # ORGANIZATION OVERVIEW
     # ========================================================
 
-    st.subheader(
-        "Organization Overview"
-    )
+    st.subheader("Organization Overview")
 
-    col1, col2, col3, col4 = st.columns(
-        4
-    )
+    col1, col2, col3, col4 = st.columns(4)
 
     col1.metric(
         "Endpoints",
@@ -246,14 +248,11 @@ else:
     # ENDPOINT INVENTORY
     # ========================================================
 
-    st.subheader(
-        "Endpoint Inventory"
-    )
+    st.subheader("Endpoint Inventory")
 
     inventory = []
 
     for report in reports:
-
         endpoint = report.get(
             "endpoint",
             {}
@@ -266,53 +265,38 @@ else:
 
         inventory.append(
             {
-                "Hostname":
-                    endpoint.get(
-                        "hostname",
-                        "N/A"
-                    ),
-
-                "Operating System":
-                    endpoint.get(
-                        "operating_system",
-                        "N/A"
-                    ),
-
-                "RAM (GB)":
-                    endpoint.get(
-                        "ram_gb",
-                        "N/A"
-                    ),
-
-                "Disk Free (GB)":
-                    endpoint.get(
-                        "disk_free_gb",
-                        "N/A"
-                    ),
-
-                "PASS":
-                    summary.get(
-                        "pass",
-                        0
-                    ),
-
-                "REVIEW":
-                    summary.get(
-                        "review",
-                        0
-                    ),
-
-                "FAIL":
-                    summary.get(
-                        "fail",
-                        0
-                    ),
-
-                "Source":
-                    report.get(
-                        "_source_type",
-                        "Unknown"
-                    )
+                "Hostname": endpoint.get(
+                    "hostname",
+                    "N/A"
+                ),
+                "Operating System": endpoint.get(
+                    "operating_system",
+                    "N/A"
+                ),
+                "RAM (GB)": endpoint.get(
+                    "ram_gb",
+                    "N/A"
+                ),
+                "Disk Free (GB)": endpoint.get(
+                    "disk_free_gb",
+                    "N/A"
+                ),
+                "PASS": summary.get(
+                    "pass",
+                    0
+                ),
+                "REVIEW": summary.get(
+                    "review",
+                    0
+                ),
+                "FAIL": summary.get(
+                    "fail",
+                    0
+                ),
+                "Source": report.get(
+                    "_source_type",
+                    "Unknown"
+                )
             }
         )
 
@@ -327,9 +311,7 @@ else:
     # ENDPOINT DETAILS
     # ========================================================
 
-    st.subheader(
-        "Endpoint Details"
-    )
+    st.subheader("Endpoint Details")
 
     endpoint_names = [
         report.get(
@@ -347,11 +329,9 @@ else:
         endpoint_names
     )
 
-
     selected_report = None
 
     for report in reports:
-
         hostname = report.get(
             "endpoint",
             {}
@@ -360,9 +340,7 @@ else:
         )
 
         if hostname == selected_endpoint:
-
             selected_report = report
-
             break
 
 
@@ -371,7 +349,6 @@ else:
     # ========================================================
 
     if selected_report:
-
         endpoint = selected_report.get(
             "endpoint",
             {}
@@ -386,15 +363,14 @@ else:
             f"### {endpoint.get('hostname', 'Unknown')}"
         )
 
-
-        col1, col2, col3 = st.columns(
-            3
+        st.caption(
+            f"Source: "
+            f"{selected_report.get('_source_type', 'Unknown')}"
         )
 
-        col1.write(
-            "**Operating System**"
-        )
+        col1, col2, col3 = st.columns(3)
 
+        col1.write("**Operating System**")
         col1.write(
             endpoint.get(
                 "operating_system",
@@ -402,26 +378,17 @@ else:
             )
         )
 
-        col2.write(
-            "**RAM**"
-        )
-
+        col2.write("**RAM**")
         col2.write(
             f"{endpoint.get('ram_gb', 'N/A')} GB"
         )
 
-        col3.write(
-            "**Disk Free**"
-        )
-
+        col3.write("**Disk Free**")
         col3.write(
             f"{endpoint.get('disk_free_gb', 'N/A')} GB"
         )
 
-
-        col1, col2, col3 = st.columns(
-            3
-        )
+        col1, col2, col3 = st.columns(3)
 
         col1.metric(
             "PASS",
@@ -452,9 +419,7 @@ else:
         # FINDINGS TABLE
         # ====================================================
 
-        st.write(
-            "### Findings"
-        )
+        st.write("### Findings")
 
         findings = selected_report.get(
             "findings",
@@ -464,38 +429,28 @@ else:
         findings_table = []
 
         for finding in findings:
-
             findings_table.append(
                 {
-                    "Status":
-                        finding.get(
-                            "status",
-                            "N/A"
-                        ),
-
-                    "Check":
-                        finding.get(
-                            "check",
-                            "N/A"
-                        ),
-
-                    "Category":
-                        finding.get(
-                            "category",
-                            "N/A"
-                        ),
-
-                    "Current":
-                        finding.get(
-                            "current_value",
-                            "N/A"
-                        ),
-
-                    "Expected":
-                        finding.get(
-                            "expected",
-                            "N/A"
-                        )
+                    "Status": finding.get(
+                        "status",
+                        "N/A"
+                    ),
+                    "Check": finding.get(
+                        "check",
+                        "N/A"
+                    ),
+                    "Category": finding.get(
+                        "category",
+                        "N/A"
+                    ),
+                    "Current": finding.get(
+                        "current_value",
+                        "N/A"
+                    ),
+                    "Expected": finding.get(
+                        "expected",
+                        "N/A"
+                    )
                 }
             )
 
@@ -510,9 +465,7 @@ else:
         # RECOMMENDED ACTIONS
         # ====================================================
 
-        st.write(
-            "### Recommended Actions"
-        )
+        st.write("### Recommended Actions")
 
         actionable_findings = [
             finding
@@ -525,22 +478,17 @@ else:
             ]
         ]
 
-
         if not actionable_findings:
-
             st.success(
                 "No remediation actions required."
             )
 
         else:
-
             for finding in actionable_findings:
-
                 with st.expander(
                     f"[{finding.get('status')}] "
                     f"{finding.get('check')}"
                 ):
-
                     st.write(
                         "**Current:**",
                         finding.get(
