@@ -1,2 +1,5 @@
 psutil
 streamlit
+fastapi
+uvicorn
+requests
