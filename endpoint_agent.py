@@ -3,11 +3,15 @@ import socket
 from datetime import datetime, timezone
 from pathlib import Path
 
+import requests
+
 from collector import get_system_info
 from assessor import assess_system
 
 
 OUTPUT_DIR = Path("endpoint-data")
+
+API_URL = "http://127.0.0.1:8000/api/endpoints"
 
 
 def build_endpoint_package():
@@ -35,7 +39,7 @@ def build_endpoint_package():
     package = {
         "agent": {
             "name": "Nanobricks Endpoint Collector",
-            "version": "1.0.0",
+            "version": "1.1.0",
             "collected_at_utc": datetime.now(
                 timezone.utc
             ).isoformat()
@@ -105,7 +109,40 @@ def save_endpoint_package(package):
     return filename
 
 
-def print_summary(package, filename):
+def send_to_api(package):
+    try:
+        response = requests.post(
+            API_URL,
+            json=package,
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            return {
+                "success": True,
+                "response": response.json()
+            }
+
+        return {
+            "success": False,
+            "error": (
+                f"API returned status "
+                f"{response.status_code}"
+            )
+        }
+
+    except requests.RequestException as error:
+        return {
+            "success": False,
+            "error": str(error)
+        }
+
+
+def print_summary(
+    package,
+    filename,
+    api_result
+):
     summary = package["summary"]
 
     print("\n" + "=" * 65)
@@ -147,12 +184,47 @@ def print_summary(package, filename):
     print("-" * 65)
 
     print(
-        f"Endpoint package created:"
+        "Local endpoint package:"
     )
 
     print(
         filename
     )
+
+    print("-" * 65)
+
+    if api_result["success"]:
+
+        print(
+            "API Submission: SUCCESS"
+        )
+
+        response = api_result[
+            "response"
+        ]
+
+        print(
+            f"Stored Endpoint: "
+            f"{response.get('hostname')}"
+        )
+
+        print(
+            f"API File: "
+            f"{response.get('stored_as')}"
+        )
+
+    else:
+
+        print(
+            "API Submission: FAILED"
+        )
+
+        print(
+            api_result.get(
+                "error",
+                "Unknown error"
+            )
+        )
 
     print("=" * 65)
 
@@ -164,7 +236,12 @@ if __name__ == "__main__":
         endpoint_package
     )
 
+    api_result = send_to_api(
+        endpoint_package
+    )
+
     print_summary(
         endpoint_package,
-        output_file
+        output_file,
+        api_result
     )
