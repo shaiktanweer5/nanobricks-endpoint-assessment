@@ -1,17 +1,16 @@
-from pathlib import Path
-import json
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+
+from database import (
+    get_all_endpoints,
+    save_endpoint
+)
 
 
 app = FastAPI(
     title="Nanobricks Endpoint API",
-    version="1.0.0"
+    version="1.1.0"
 )
-
-DATA_DIR = Path("api-data")
-DATA_DIR.mkdir(exist_ok=True)
 
 
 class EndpointPackage(BaseModel):
@@ -21,17 +20,33 @@ class EndpointPackage(BaseModel):
     findings: list
 
 
+# ============================================================
+# API HEALTH
+# ============================================================
+
 @app.get("/")
 def root():
     return {
         "service": "Nanobricks Endpoint API",
-        "status": "running"
+        "status": "running",
+        "storage": "database"
     }
 
 
+# ============================================================
+# RECEIVE ENDPOINT ASSESSMENT
+# ============================================================
+
 @app.post("/api/endpoints")
-def receive_endpoint(package: EndpointPackage):
-    hostname = package.endpoint.get(
+def receive_endpoint(
+    package: EndpointPackage
+):
+    package_data = package.model_dump()
+
+    hostname = package_data.get(
+        "endpoint",
+        {}
+    ).get(
         "hostname"
     )
 
@@ -41,32 +56,46 @@ def receive_endpoint(package: EndpointPackage):
             detail="Hostname is required."
         )
 
-    safe_hostname = "".join(
-        character
-        if character.isalnum()
-        or character in "-_"
-        else "_"
-        for character in hostname
-    )
+    try:
+        save_endpoint(
+            package_data
+        )
 
-    file_path = (
-        DATA_DIR
-        / f"{safe_hostname}-assessment.json"
-    )
-
-    with open(
-        file_path,
-        "w",
-        encoding="utf-8"
-    ) as file:
-        json.dump(
-            package.model_dump(),
-            file,
-            indent=4
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unable to save endpoint "
+                f"assessment: {error}"
+            )
         )
 
     return {
         "status": "received",
         "hostname": hostname,
-        "stored_as": file_path.name
+        "stored_as": "database"
     }
+
+
+# ============================================================
+# GET ALL ENDPOINTS
+# ============================================================
+
+@app.get("/api/endpoints")
+def list_endpoints():
+    try:
+        endpoints = get_all_endpoints()
+
+        return {
+            "count": len(endpoints),
+            "endpoints": endpoints
+        }
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unable to retrieve endpoints: "
+                f"{error}"
+            )
+        )
