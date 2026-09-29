@@ -1,6 +1,13 @@
 __pycache__/
 *.pyc
+
 endpoint-report.json
 endpoint-data/
 api-data/
 nanobricks_endpoint.db
+
+build/
+dist/
+*.spec
+
+Nanobricks_Endpoint_Assessment.xlsx

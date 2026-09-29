@@ -1,17 +1,19 @@
 import json
 import socket
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
-
-import requests
 
 from collector import get_system_info
 from assessor import assess_system
 
 
-OUTPUT_DIR = Path("endpoint-data")
+if getattr(sys, "frozen", False):
+    APP_DIR = Path(sys.executable).resolve().parent
+else:
+    APP_DIR = Path(__file__).resolve().parent
 
-API_URL = "http://127.0.0.1:8000/api/endpoints"
+OUTPUT_DIR = APP_DIR / "endpoint-data"
 
 
 def build_endpoint_package():
@@ -39,7 +41,7 @@ def build_endpoint_package():
     package = {
         "agent": {
             "name": "Nanobricks Endpoint Collector",
-            "version": "1.1.0",
+            "version": "1.3.0",
             "collected_at_utc": datetime.now(
                 timezone.utc
             ).isoformat()
@@ -60,6 +62,33 @@ def build_endpoint_package():
             "disk_used_percent": system_info[
                 "disk_used_percent"
             ]
+        },
+
+        "raw_data": {
+            "defender": system_info.get(
+                "defender",
+                {}
+            ),
+
+            "firewall": system_info.get(
+                "firewall",
+                {}
+            ),
+
+            "windows_update": system_info.get(
+                "windows_update",
+                {}
+            ),
+
+            "office": system_info.get(
+                "office",
+                {}
+            ),
+
+            "local_users": system_info.get(
+                "local_users",
+                {}
+            )
         },
 
         "summary": summary,
@@ -99,7 +128,6 @@ def save_endpoint_package(package):
         "w",
         encoding="utf-8"
     ) as file:
-
         json.dump(
             package,
             file,
@@ -109,43 +137,14 @@ def save_endpoint_package(package):
     return filename
 
 
-def send_to_api(package):
-    try:
-        response = requests.post(
-            API_URL,
-            json=package,
-            timeout=10
-        )
-
-        if response.status_code == 200:
-            return {
-                "success": True,
-                "response": response.json()
-            }
-
-        return {
-            "success": False,
-            "error": (
-                f"API returned status "
-                f"{response.status_code}"
-            )
-        }
-
-    except requests.RequestException as error:
-        return {
-            "success": False,
-            "error": str(error)
-        }
-
-
 def print_summary(
     package,
-    filename,
-    api_result
+    filename
 ):
     summary = package["summary"]
 
-    print("\n" + "=" * 65)
+    print()
+    print("=" * 65)
     print("NANOBRICKS ENDPOINT COLLECTOR")
     print("=" * 65)
 
@@ -184,47 +183,12 @@ def print_summary(
     print("-" * 65)
 
     print(
-        "Local endpoint package:"
+        "Assessment file created:"
     )
 
     print(
-        filename
+        filename.resolve()
     )
-
-    print("-" * 65)
-
-    if api_result["success"]:
-
-        print(
-            "API Submission: SUCCESS"
-        )
-
-        response = api_result[
-            "response"
-        ]
-
-        print(
-            f"Stored Endpoint: "
-            f"{response.get('hostname')}"
-        )
-
-        print(
-            f"API File: "
-            f"{response.get('stored_as')}"
-        )
-
-    else:
-
-        print(
-            "API Submission: FAILED"
-        )
-
-        print(
-            api_result.get(
-                "error",
-                "Unknown error"
-            )
-        )
 
     print("=" * 65)
 
@@ -236,12 +200,7 @@ if __name__ == "__main__":
         endpoint_package
     )
 
-    api_result = send_to_api(
-        endpoint_package
-    )
-
     print_summary(
         endpoint_package,
-        output_file,
-        api_result
+        output_file
     )
