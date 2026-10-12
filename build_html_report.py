@@ -1,17 +1,18 @@
 import argparse
 import html
 import json
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 
 APP_NAME = "Nanobricks Endpoint Assessment"
-REPORT_VERSION = "2.0.0"
+REPORT_VERSION = "3.0.0"
 
 
 def esc(value):
     if value is None:
         return "N/A"
+
     return html.escape(str(value))
 
 
@@ -41,7 +42,11 @@ def format_bool(value):
 
 
 def load_json(json_path):
-    with open(json_path, "r", encoding="utf-8") as file:
+    with open(
+        json_path,
+        "r",
+        encoding="utf-8"
+    ) as file:
         return json.load(file)
 
 
@@ -49,23 +54,39 @@ def build_findings_rows(findings):
     rows = []
 
     for finding in findings:
-        status = finding.get("status", "UNKNOWN")
+        status = finding.get(
+            "status",
+            "UNKNOWN"
+        )
 
         rows.append(
             f"""
             <tr>
                 <td>{esc(finding.get("category"))}</td>
+
                 <td>
-                    <strong>{esc(finding.get("check"))}</strong>
+                    <strong>
+                        {esc(finding.get("check"))}
+                    </strong>
                 </td>
+
                 <td>
                     <span class="status-badge {status_class(status)}">
                         {esc(status)}
                     </span>
                 </td>
-                <td>{esc(finding.get("current_value"))}</td>
-                <td>{esc(finding.get("expected"))}</td>
-                <td>{esc(finding.get("recommendation"))}</td>
+
+                <td>
+                    {esc(finding.get("current_value"))}
+                </td>
+
+                <td>
+                    {esc(finding.get("expected"))}
+                </td>
+
+                <td>
+                    {esc(finding.get("recommendation"))}
+                </td>
             </tr>
             """
         )
@@ -77,7 +98,15 @@ def build_recommendations(findings):
     actionable = [
         finding
         for finding in findings
-        if str(finding.get("status", "")).upper() in {"REVIEW", "FAIL"}
+        if str(
+            finding.get(
+                "status",
+                ""
+            )
+        ).upper() in {
+            "REVIEW",
+            "FAIL"
+        }
     ]
 
     if not actionable:
@@ -89,23 +118,37 @@ def build_recommendations(findings):
 
     cards = []
 
-    for number, finding in enumerate(actionable, start=1):
-        status = str(finding.get("status", "UNKNOWN")).upper()
+    for number, finding in enumerate(
+        actionable,
+        start=1
+    ):
+        status = str(
+            finding.get(
+                "status",
+                "UNKNOWN"
+            )
+        ).upper()
 
         cards.append(
             f"""
             <div class="recommendation-card">
+
                 <div class="recommendation-number">
                     {number}
                 </div>
 
                 <div class="recommendation-content">
+
                     <div class="recommendation-top">
-                        <h3>{esc(finding.get("check"))}</h3>
+
+                        <h3>
+                            {esc(finding.get("check"))}
+                        </h3>
 
                         <span class="status-badge {status_class(status)}">
                             {esc(status)}
                         </span>
+
                     </div>
 
                     <p>
@@ -117,7 +160,9 @@ def build_recommendations(findings):
                         <strong>Recommendation:</strong>
                         {esc(finding.get("recommendation"))}
                     </p>
+
                 </div>
+
             </div>
             """
         )
@@ -126,25 +171,33 @@ def build_recommendations(findings):
 
 
 def build_firewall_rows(firewall):
-    profiles = firewall.get("profiles", [])
+    profiles = firewall.get(
+        "profiles",
+        []
+    )
 
     if not profiles:
         return """
         <tr>
-            <td colspan="2">No firewall profile data available.</td>
+            <td colspan="2">
+                No firewall profile data available.
+            </td>
         </tr>
         """
 
     rows = []
 
     for profile in profiles:
-        enabled = profile.get("enabled")
-
         rows.append(
             f"""
             <tr>
-                <td>{esc(profile.get("name"))}</td>
-                <td>{format_bool(enabled)}</td>
+                <td>
+                    {esc(profile.get("name"))}
+                </td>
+
+                <td>
+                    {format_bool(profile.get("enabled"))}
+                </td>
             </tr>
             """
         )
@@ -153,12 +206,17 @@ def build_firewall_rows(firewall):
 
 
 def build_local_users_rows(local_users):
-    users = local_users.get("users", [])
+    users = local_users.get(
+        "users",
+        []
+    )
 
     if not users:
         return """
         <tr>
-            <td colspan="3">No local-user information available.</td>
+            <td colspan="3">
+                No local-user information available.
+            </td>
         </tr>
         """
 
@@ -168,9 +226,17 @@ def build_local_users_rows(local_users):
         rows.append(
             f"""
             <tr>
-                <td>{esc(user.get("Name"))}</td>
-                <td>{format_bool(user.get("Enabled"))}</td>
-                <td>{esc(user.get("PasswordRequired"))}</td>
+                <td>
+                    {esc(user.get("Name"))}
+                </td>
+
+                <td>
+                    {format_bool(user.get("Enabled"))}
+                </td>
+
+                <td>
+                    {esc(user.get("PasswordRequired"))}
+                </td>
             </tr>
             """
         )
@@ -179,12 +245,17 @@ def build_local_users_rows(local_users):
 
 
 def build_admin_rows(local_users):
-    admins = local_users.get("administrators", [])
+    admins = local_users.get(
+        "administrators",
+        []
+    )
 
     if not admins:
         return """
         <tr>
-            <td colspan="2">No local administrator information available.</td>
+            <td colspan="2">
+                No local administrator information available.
+            </td>
         </tr>
         """
 
@@ -194,8 +265,13 @@ def build_admin_rows(local_users):
         rows.append(
             f"""
             <tr>
-                <td>{esc(admin.get("Name"))}</td>
-                <td>{esc(admin.get("ObjectClass"))}</td>
+                <td>
+                    {esc(admin.get("Name"))}
+                </td>
+
+                <td>
+                    {esc(admin.get("ObjectClass"))}
+                </td>
             </tr>
             """
         )
@@ -204,41 +280,178 @@ def build_admin_rows(local_users):
 
 
 def generate_report(data):
-    agent = data.get("agent", {})
-    endpoint = data.get("endpoint", {})
-    raw_data = data.get("raw_data", {})
-    summary = data.get("summary", {})
-    findings = data.get("findings", [])
+    agent = data.get(
+        "agent",
+        {}
+    )
 
-    defender = raw_data.get("defender", {})
-    firewall = raw_data.get("firewall", {})
-    windows_update = raw_data.get("windows_update", {})
-    office = raw_data.get("office", {})
-    local_users = raw_data.get("local_users", {})
+    endpoint = data.get(
+        "endpoint",
+        {}
+    )
 
-    hostname = endpoint.get("hostname", "Unknown Endpoint")
+    raw_data = data.get(
+        "raw_data",
+        {}
+    )
 
-    pass_count = summary.get("pass", 0)
-    review_count = summary.get("review", 0)
-    fail_count = summary.get("fail", 0)
-    total_count = summary.get("total", len(findings))
+    summary = data.get(
+        "summary",
+        {}
+    )
+
+    findings = data.get(
+        "findings",
+        []
+    )
+
+    assessment_context = data.get(
+        "assessment_context",
+        {}
+    )
+
+    customer_name = assessment_context.get(
+        "customer_name",
+        ""
+    )
+
+    technician_name = assessment_context.get(
+        "technician_name",
+        ""
+    )
+
+    defender = raw_data.get(
+        "defender",
+        {}
+    )
+
+    firewall = raw_data.get(
+        "firewall",
+        {}
+    )
+
+    windows_update = raw_data.get(
+        "windows_update",
+        {}
+    )
+
+    office = raw_data.get(
+        "office",
+        {}
+    )
+
+    local_users = raw_data.get(
+        "local_users",
+        {}
+    )
+
+    hostname = endpoint.get(
+        "hostname",
+        "Unknown Endpoint"
+    )
+
+    pass_count = summary.get(
+        "pass",
+        0
+    )
+
+    review_count = summary.get(
+        "review",
+        0
+    )
+
+    fail_count = summary.get(
+        "fail",
+        0
+    )
+
+    total_count = summary.get(
+        "total",
+        len(findings)
+    )
 
     if fail_count > 0:
         overall_status = "FAIL"
+
     elif review_count > 0:
         overall_status = "REVIEW"
+
     else:
         overall_status = "PASS"
 
-    generated_at = datetime.now().strftime("%d %b %Y, %I:%M %p")
+    generated_at = datetime.now().strftime(
+        "%d %b %Y, %I:%M %p"
+    )
 
-    findings_rows = build_findings_rows(findings)
-    recommendations = build_recommendations(findings)
-    firewall_rows = build_firewall_rows(firewall)
-    user_rows = build_local_users_rows(local_users)
-    admin_rows = build_admin_rows(local_users)
+    findings_rows = build_findings_rows(
+        findings
+    )
+
+    recommendations = build_recommendations(
+        findings
+    )
+
+    firewall_rows = build_firewall_rows(
+        firewall
+    )
+
+    user_rows = build_local_users_rows(
+        local_users
+    )
+
+    admin_rows = build_admin_rows(
+        local_users
+    )
+
+    customer_context_html = ""
+
+    if customer_name or technician_name:
+        customer_context_html = f"""
+        <div class="customer-grid">
+
+            <div class="customer-item">
+
+                <div class="customer-label">
+                    Customer / Company
+                </div>
+
+                <div class="customer-value">
+                    {esc(customer_name or "Not provided")}
+                </div>
+
+            </div>
+
+
+            <div class="customer-item">
+
+                <div class="customer-label">
+                    Technician / Assessor
+                </div>
+
+                <div class="customer-value">
+                    {esc(technician_name or "Not provided")}
+                </div>
+
+            </div>
+
+
+            <div class="customer-item">
+
+                <div class="customer-label">
+                    Assessment Date
+                </div>
+
+                <div class="customer-value">
+                    {esc(generated_at)}
+                </div>
+
+            </div>
+
+        </div>
+        """
 
     return f"""<!DOCTYPE html>
+
 <html lang="en">
 
 <head>
@@ -252,26 +465,31 @@ def generate_report(data):
     {esc(hostname)} - Nanobricks Endpoint Assessment
 </title>
 
+
 <style>
 
 * {{
     box-sizing: border-box;
 }}
 
+
 body {{
     margin: 0;
     background: #f5f7f6;
     color: #24352b;
+
     font-family:
         "Segoe UI",
         Arial,
         sans-serif;
 }}
 
+
 .container {{
     width: min(1180px, 94%);
     margin: 40px auto;
 }}
+
 
 .header {{
     background:
@@ -280,12 +498,17 @@ body {{
             #153d28,
             #238b45
         );
+
     color: white;
+
     border-radius: 18px;
+
     padding: 36px;
+
     box-shadow:
         0 15px 40px rgba(0, 0, 0, 0.12);
 }}
+
 
 .brand {{
     font-size: 15px;
@@ -294,10 +517,12 @@ body {{
     opacity: 0.9;
 }}
 
+
 .header h1 {{
     margin: 12px 0 8px;
     font-size: 34px;
 }}
+
 
 .header p {{
     margin: 0;
@@ -305,241 +530,440 @@ body {{
     line-height: 1.6;
 }}
 
+
+.customer-grid {{
+    margin-top: 24px;
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 12px;
+}}
+
+
+.customer-item {{
+    background:
+        rgba(255,255,255,.12);
+
+    border:
+        1px solid rgba(255,255,255,.18);
+
+    border-radius: 12px;
+
+    padding: 15px;
+}}
+
+
+.customer-label {{
+    font-size: 11px;
+
+    text-transform: uppercase;
+
+    opacity: .75;
+
+    font-weight: 700;
+
+    letter-spacing: .4px;
+}}
+
+
+.customer-value {{
+    margin-top: 6px;
+
+    font-size: 15px;
+
+    font-weight: 700;
+
+    overflow-wrap: anywhere;
+}}
+
+
 .overall {{
     margin-top: 24px;
+
     display: inline-flex;
+
     align-items: center;
+
     gap: 10px;
-    background: rgba(255,255,255,.12);
+
+    background:
+        rgba(255,255,255,.12);
+
     padding: 11px 16px;
+
     border-radius: 40px;
 }}
 
+
 .section {{
     margin-top: 28px;
+
     background: white;
+
     border-radius: 16px;
+
     padding: 28px;
-    border: 1px solid #e3e9e5;
+
+    border:
+        1px solid #e3e9e5;
+
     box-shadow:
         0 8px 25px rgba(0,0,0,.04);
 }}
 
+
 .section h2 {{
     margin-top: 0;
+
     margin-bottom: 22px;
+
     font-size: 23px;
 }}
 
+
 .summary-grid {{
     display: grid;
+
     grid-template-columns:
         repeat(4, minmax(0, 1fr));
+
     gap: 16px;
 }}
 
+
 .summary-card {{
-    border: 1px solid #e4ebe6;
+    border:
+        1px solid #e4ebe6;
+
     border-radius: 14px;
+
     padding: 22px;
 }}
 
+
 .summary-card .number {{
     font-size: 32px;
+
     font-weight: 800;
+
     margin-bottom: 5px;
 }}
 
+
 .summary-card .label {{
     color: #6b756f;
+
     font-size: 14px;
 }}
 
+
 .pass-card {{
-    border-left: 5px solid #249447;
+    border-left:
+        5px solid #249447;
 }}
+
 
 .review-card {{
-    border-left: 5px solid #d69e00;
+    border-left:
+        5px solid #d69e00;
 }}
+
 
 .fail-card {{
-    border-left: 5px solid #cc3d3d;
+    border-left:
+        5px solid #cc3d3d;
 }}
 
+
 .total-card {{
-    border-left: 5px solid #3867a6;
+    border-left:
+        5px solid #3867a6;
 }}
+
 
 .info-grid {{
     display: grid;
+
     grid-template-columns:
         repeat(3, minmax(0, 1fr));
+
     gap: 15px;
 }}
 
+
 .info-item {{
     background: #f8faf9;
+
     border-radius: 12px;
+
     padding: 17px;
-    border: 1px solid #e8ece9;
+
+    border:
+        1px solid #e8ece9;
 }}
+
 
 .info-label {{
     font-size: 12px;
+
     text-transform: uppercase;
+
     color: #738079;
+
     font-weight: 700;
+
     letter-spacing: .4px;
 }}
 
+
 .info-value {{
     margin-top: 7px;
+
     font-size: 16px;
+
     font-weight: 600;
+
     overflow-wrap: anywhere;
 }}
 
+
 .status-badge {{
     display: inline-block;
+
     border-radius: 999px;
+
     padding: 6px 11px;
+
     font-size: 12px;
+
     font-weight: 800;
 }}
+
 
 .status-pass {{
     background: #e8f7ed;
     color: #167b36;
 }}
 
+
 .status-review {{
     background: #fff4d5;
     color: #956900;
 }}
+
 
 .status-fail {{
     background: #fde9e9;
     color: #b32626;
 }}
 
+
 .status-neutral {{
     background: #edf1ef;
     color: #58635d;
 }}
+
 
 .table-wrap {{
     width: 100%;
     overflow-x: auto;
 }}
 
+
 table {{
     width: 100%;
+
     border-collapse: collapse;
+
     min-width: 760px;
 }}
 
+
 th {{
     text-align: left;
+
     padding: 13px;
+
     background: #f2f6f3;
-    border-bottom: 2px solid #dce5df;
+
+    border-bottom:
+        2px solid #dce5df;
+
     font-size: 13px;
 }}
 
+
 td {{
     padding: 14px 13px;
-    border-bottom: 1px solid #edf0ee;
+
+    border-bottom:
+        1px solid #edf0ee;
+
     vertical-align: top;
+
     line-height: 1.5;
+
     font-size: 14px;
 }}
+
 
 tr:last-child td {{
     border-bottom: none;
 }}
 
+
 .recommendation-card {{
     display: flex;
+
     gap: 18px;
+
     padding: 20px 0;
-    border-bottom: 1px solid #edf0ee;
+
+    border-bottom:
+        1px solid #edf0ee;
 }}
+
 
 .recommendation-card:last-child {{
     border-bottom: none;
 }}
 
+
 .recommendation-number {{
     flex: 0 0 42px;
+
     width: 42px;
+
     height: 42px;
+
     background: #1f6f2b;
+
     color: white;
+
     border-radius: 50%;
+
     display: flex;
+
     align-items: center;
+
     justify-content: center;
+
     font-weight: 800;
 }}
+
 
 .recommendation-content {{
     flex: 1;
 }}
 
+
 .recommendation-top {{
     display: flex;
+
     align-items: center;
+
     gap: 12px;
+
     justify-content: space-between;
 }}
 
+
 .recommendation-top h3 {{
     margin: 0;
+
     font-size: 17px;
 }}
 
+
 .recommendation-content p {{
     margin: 7px 0 0;
+
     line-height: 1.6;
 }}
 
+
 .two-column {{
     display: grid;
+
     grid-template-columns:
         repeat(2, minmax(0, 1fr));
+
     gap: 22px;
 }}
 
+
 .sub-card {{
-    border: 1px solid #e4ebe6;
+    border:
+        1px solid #e4ebe6;
+
     border-radius: 14px;
+
     padding: 20px;
 }}
+
 
 .sub-card h3 {{
     margin-top: 0;
 }}
 
+
 .empty-state {{
     padding: 20px;
+
     background: #f4faf5;
+
     border-radius: 12px;
 }}
 
-.footer {{
-    text-align: center;
-    color: #78827c;
-    margin: 30px 0 50px;
-    font-size: 13px;
+
+.service-box {{
+    background: #f1faf2;
+
+    border:
+        1px solid #dbeade;
+
+    border-left:
+        5px solid #2fa93a;
+
+    border-radius: 14px;
+
+    padding: 24px;
+
     line-height: 1.7;
 }}
 
+
+.service-box h3 {{
+    margin-top: 0;
+
+    color: #1f6f2b;
+}}
+
+
+.footer {{
+    text-align: center;
+
+    color: #78827c;
+
+    margin: 30px 0 50px;
+
+    font-size: 13px;
+
+    line-height: 1.7;
+}}
+
+
 .disclaimer {{
     color: #6d7771;
+
     line-height: 1.7;
+
     font-size: 14px;
 }}
+
 
 @media (max-width: 900px) {{
 
@@ -548,7 +972,8 @@ tr:last-child td {{
             repeat(2, minmax(0, 1fr));
     }}
 
-    .info-grid {{
+    .info-grid,
+    .customer-grid {{
         grid-template-columns:
             repeat(2, minmax(0, 1fr));
     }}
@@ -558,6 +983,7 @@ tr:last-child td {{
     }}
 
 }}
+
 
 @media (max-width: 600px) {{
 
@@ -575,8 +1001,64 @@ tr:last-child td {{
     }}
 
     .summary-grid,
-    .info-grid {{
+    .info-grid,
+    .customer-grid {{
         grid-template-columns: 1fr;
+    }}
+
+}}
+
+
+@media print {{
+
+    body {{
+        background: #ffffff;
+    }}
+
+    .container {{
+        width: 100%;
+        margin: 0;
+    }}
+
+    .header,
+    .section {{
+        box-shadow: none;
+    }}
+
+    .table-wrap {{
+        overflow: visible;
+    }}
+
+    table {{
+        min-width: 0;
+        width: 100%;
+        table-layout: fixed;
+    }}
+
+    th,
+    td {{
+        font-size: 10px;
+        padding: 7px 6px;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }}
+
+    .section {{
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }}
+
+    .recommendation-card {{
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }}
+
+    .customer-grid,
+    .summary-grid,
+    .info-grid,
+    .two-column {{
+        break-inside: avoid;
+        page-break-inside: avoid;
     }}
 
 }}
@@ -597,16 +1079,29 @@ tr:last-child td {{
         NANOBRICKS
     </div>
 
+
     <h1>
         Endpoint Assessment Report
     </h1>
 
+
     <p>
+
         Endpoint:
-        <strong>{esc(hostname)}</strong>
+
+        <strong>
+            {esc(hostname)}
+        </strong>
+
         &nbsp; • &nbsp;
+
         Report Version {REPORT_VERSION}
+
     </p>
+
+
+    {customer_context_html}
+
 
     <div class="overall">
 
@@ -627,7 +1122,9 @@ tr:last-child td {{
         Assessment Summary
     </h2>
 
+
     <div class="summary-grid">
+
 
         <div class="summary-card pass-card">
 
@@ -680,6 +1177,7 @@ tr:last-child td {{
 
         </div>
 
+
     </div>
 
 </section>
@@ -691,7 +1189,9 @@ tr:last-child td {{
         Endpoint Overview
     </h2>
 
+
     <div class="info-grid">
+
 
         <div class="info-item">
 
@@ -809,6 +1309,7 @@ tr:last-child td {{
 
         </div>
 
+
     </div>
 
 </section>
@@ -819,6 +1320,7 @@ tr:last-child td {{
     <h2>
         Assessment Findings
     </h2>
+
 
     <div class="table-wrap">
 
@@ -836,6 +1338,7 @@ tr:last-child td {{
                 </tr>
 
             </thead>
+
 
             <tbody>
 
@@ -866,6 +1369,7 @@ tr:last-child td {{
     <h2>
         Security & Software Details
     </h2>
+
 
     <div class="two-column">
 
@@ -943,6 +1447,7 @@ tr:last-child td {{
                 Windows Firewall
             </h3>
 
+
             <div class="table-wrap">
 
                 <table>
@@ -956,8 +1461,11 @@ tr:last-child td {{
 
                     </thead>
 
+
                     <tbody>
+
                         {firewall_rows}
+
                     </tbody>
 
                 </table>
@@ -965,6 +1473,7 @@ tr:last-child td {{
             </div>
 
         </div>
+
 
     </div>
 
@@ -976,6 +1485,7 @@ tr:last-child td {{
     <h2>
         Local Accounts
     </h2>
+
 
     <div class="table-wrap">
 
@@ -991,8 +1501,11 @@ tr:last-child td {{
 
             </thead>
 
+
             <tbody>
+
                 {user_rows}
+
             </tbody>
 
         </table>
@@ -1008,6 +1521,7 @@ tr:last-child td {{
         Local Administrators
     </h2>
 
+
     <div class="table-wrap">
 
         <table>
@@ -1021,8 +1535,11 @@ tr:last-child td {{
 
             </thead>
 
+
             <tbody>
+
                 {admin_rows}
+
             </tbody>
 
         </table>
@@ -1038,7 +1555,35 @@ tr:last-child td {{
         Assessment Information
     </h2>
 
+
     <div class="info-grid">
+
+
+        <div class="info-item">
+
+            <div class="info-label">
+                Customer / Company
+            </div>
+
+            <div class="info-value">
+                {esc(customer_name or "Not provided")}
+            </div>
+
+        </div>
+
+
+        <div class="info-item">
+
+            <div class="info-label">
+                Technician / Assessor
+            </div>
+
+            <div class="info-value">
+                {esc(technician_name or "Not provided")}
+            </div>
+
+        </div>
+
 
         <div class="info-item">
 
@@ -1078,6 +1623,53 @@ tr:last-child td {{
 
         </div>
 
+
+        <div class="info-item">
+
+            <div class="info-label">
+                Report Generated
+            </div>
+
+            <div class="info-value">
+                {esc(generated_at)}
+            </div>
+
+        </div>
+
+
+    </div>
+
+</section>
+
+
+<section class="section">
+
+    <div class="service-box">
+
+        <h3>
+            Need Help With These Findings?
+        </h3>
+
+        <p>
+            Nanobricks can help businesses with endpoint
+            remediation, Windows standardization,
+            security configuration, multi-PC assessment
+            and ongoing IT support.
+        </p>
+
+        <p>
+            <strong>Email:</strong>
+            info@nanobricks.in
+            <br>
+
+            <strong>Phone:</strong>
+            +91 7995720507
+            <br>
+
+            <strong>Website:</strong>
+            www.nanobricks.in
+        </p>
+
     </div>
 
 </section>
@@ -1091,7 +1683,7 @@ tr:last-child td {{
 
     <p class="disclaimer">
 
-        Nanobricks Endpoint Assessment V2 is a lightweight
+        Nanobricks Endpoint Assessment V3 is a lightweight
         endpoint configuration, security posture and readiness
         assessment utility.
 
@@ -1114,7 +1706,8 @@ tr:last-child td {{
 
     <br>
 
-    Report generated: {generated_at}
+    Report generated:
+    {generated_at}
 
     <br>
 
@@ -1133,7 +1726,10 @@ tr:last-child td {{
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate Nanobricks Endpoint Assessment V2 HTML report."
+        description=(
+            "Generate Nanobricks Endpoint "
+            "Assessment V3 HTML report."
+        )
     )
 
     parser.add_argument(
@@ -1149,21 +1745,32 @@ def main():
 
     args = parser.parse_args()
 
-    json_path = Path(args.json_file)
+    json_path = Path(
+        args.json_file
+    )
 
     if not json_path.exists():
         raise SystemExit(
             f"JSON file not found: {json_path}"
         )
 
-    data = load_json(json_path)
+    data = load_json(
+        json_path
+    )
 
     if args.output:
-        output_path = Path(args.output)
-    else:
-        output_path = json_path.with_suffix(".html")
+        output_path = Path(
+            args.output
+        )
 
-    report_html = generate_report(data)
+    else:
+        output_path = json_path.with_suffix(
+            ".html"
+        )
+
+    report_html = generate_report(
+        data
+    )
 
     output_path.write_text(
         report_html,
@@ -1171,12 +1778,28 @@ def main():
     )
 
     print()
-    print("Nanobricks Endpoint Assessment V2")
-    print("---------------------------------")
-    print(f"Input : {json_path}")
-    print(f"Output: {output_path}")
+
+    print(
+        "Nanobricks Endpoint Assessment V3"
+    )
+
+    print(
+        "---------------------------------"
+    )
+
+    print(
+        f"Input : {json_path}"
+    )
+
+    print(
+        f"Output: {output_path}"
+    )
+
     print()
-    print("HTML report generated successfully.")
+
+    print(
+        "HTML report generated successfully."
+    )
 
 
 if __name__ == "__main__":

@@ -42,7 +42,7 @@ def build_endpoint_package():
     package = {
         "agent": {
             "name": "Nanobricks Endpoint Collector",
-            "version": "2.0.0",
+            "version": "3.0.0",
             "collected_at_utc": datetime.now(
                 timezone.utc
             ).isoformat()
