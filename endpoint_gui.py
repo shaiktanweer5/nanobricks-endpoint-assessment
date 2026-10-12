@@ -1,3 +1,4 @@
+import sys
 import threading
 import tkinter as tk
 from tkinter import messagebox
@@ -19,7 +20,6 @@ CARD_BG = "#ffffff"
 GREEN_DARK = "#14532d"
 GREEN = "#1f7a3a"
 GREEN_BRIGHT = "#2faf43"
-GREEN_LIGHT = "#eaf7ed"
 
 TEXT = "#20342a"
 TEXT_MUTED = "#66756d"
@@ -33,6 +33,22 @@ REVIEW_TEXT = "#956900"
 
 FAIL_BG = "#fde9e9"
 FAIL_TEXT = "#b32626"
+
+
+def resource_path(relative_path):
+    """
+    Return the correct path for both normal Python execution
+    and a PyInstaller packaged executable.
+    """
+
+    try:
+        base_path = Path(sys._MEIPASS)
+    except AttributeError:
+        base_path = Path(__file__).resolve().parent
+
+    return str(
+        base_path / relative_path
+    )
 
 
 class EndpointAssessmentApp:
@@ -55,6 +71,15 @@ class EndpointAssessmentApp:
         self.root.configure(
             bg=BG
         )
+
+        try:
+            self.root.iconbitmap(
+                resource_path(
+                    "nano-log.ico"
+                )
+            )
+        except Exception:
+            pass
 
         self.customer_var = tk.StringVar()
 
@@ -337,7 +362,11 @@ class EndpointAssessmentApp:
         event
     ):
         self.canvas.yview_scroll(
-            int(-1 * (event.delta / 120)),
+            int(
+                -1 * (
+                    event.delta / 120
+                )
+            ),
             "units"
         )
 
