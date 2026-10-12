@@ -6,6 +6,7 @@ from pathlib import Path
 
 from collector import get_system_info
 from assessor import assess_system
+from build_html_report import generate_report
 
 
 if getattr(sys, "frozen", False):
@@ -41,7 +42,7 @@ def build_endpoint_package():
     package = {
         "agent": {
             "name": "Nanobricks Endpoint Collector",
-            "version": "1.3.0",
+            "version": "2.0.0",
             "collected_at_utc": datetime.now(
                 timezone.utc
             ).isoformat()
@@ -99,11 +100,7 @@ def build_endpoint_package():
     return package
 
 
-def save_endpoint_package(package):
-    OUTPUT_DIR.mkdir(
-        exist_ok=True
-    )
-
+def get_safe_hostname(package):
     hostname = package[
         "endpoint"
     ][
@@ -116,6 +113,18 @@ def save_endpoint_package(package):
         or character in "-_"
         else "_"
         for character in hostname
+    )
+
+    return safe_hostname
+
+
+def save_endpoint_package(package):
+    OUTPUT_DIR.mkdir(
+        exist_ok=True
+    )
+
+    safe_hostname = get_safe_hostname(
+        package
     )
 
     filename = (
@@ -137,15 +146,42 @@ def save_endpoint_package(package):
     return filename
 
 
+def save_html_report(package):
+    OUTPUT_DIR.mkdir(
+        exist_ok=True
+    )
+
+    safe_hostname = get_safe_hostname(
+        package
+    )
+
+    filename = (
+        OUTPUT_DIR
+        / f"{safe_hostname}-assessment.html"
+    )
+
+    report_html = generate_report(
+        package
+    )
+
+    filename.write_text(
+        report_html,
+        encoding="utf-8"
+    )
+
+    return filename
+
+
 def print_summary(
     package,
-    filename
+    json_filename,
+    html_filename
 ):
     summary = package["summary"]
 
     print()
     print("=" * 65)
-    print("NANOBRICKS ENDPOINT COLLECTOR")
+    print("NANOBRICKS ENDPOINT ASSESSMENT V2")
     print("=" * 65)
 
     print(
@@ -182,12 +218,16 @@ def print_summary(
 
     print("-" * 65)
 
+    print("JSON assessment created:")
     print(
-        "Assessment file created:"
+        json_filename.resolve()
     )
 
+    print()
+
+    print("HTML report created:")
     print(
-        filename.resolve()
+        html_filename.resolve()
     )
 
     print("=" * 65)
@@ -196,11 +236,16 @@ def print_summary(
 if __name__ == "__main__":
     endpoint_package = build_endpoint_package()
 
-    output_file = save_endpoint_package(
+    json_output_file = save_endpoint_package(
+        endpoint_package
+    )
+
+    html_output_file = save_html_report(
         endpoint_package
     )
 
     print_summary(
         endpoint_package,
-        output_file
+        json_output_file,
+        html_output_file
     )
